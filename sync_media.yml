@@ -1,0 +1,23 @@
+- name: Sync NAS media to Raspberry Pi
+  hosts: video_pis
+  gather_facts: false
+  vars:
+    target_path: /home/pi/video/
+  tasks:
+    - name: Ensure destination directory exists on Raspberry Pi
+      file:
+        path: "{{ target_path }}"
+        state: directory
+        owner: pi
+        group: pi
+        mode: '0755'
+
+    - name: Sync NAS media folder to Raspberry Pi
+      synchronize:
+        src: "{{ nas_source_path }}"
+        dest: "{{ target_path }}"
+        archive: yes
+        recursive: yes
+        delete: no
+      delegate_to: localhost
+      run_once: false
