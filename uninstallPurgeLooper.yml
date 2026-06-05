@@ -1,10 +1,12 @@
 ---
 - hosts: pi
   become: true
+  serial: 1
   pre_tasks:
      - name: update
        tags: always
-       apt: update_cache=yes
+       apt:
+         update_cache: true
 
      - name: Run a script with arguments (free form)
        command: sudo sh /home/pi/videoLooper/disable.sh

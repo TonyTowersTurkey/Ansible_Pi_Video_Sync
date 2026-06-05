@@ -1,6 +1,7 @@
 - name: Sync NAS media to Raspberry Pi
   hosts: video_pis
-  gather_facts: false
+  serial: 1
+  gather_facts: true
   vars:
     target_path: /home/pi/video/
   tasks:
@@ -16,8 +17,8 @@
       synchronize:
         src: "{{ nas_source_path }}"
         dest: "{{ target_path }}"
-        archive: yes
-        recursive: yes
-        delete: no
+        archive: true
+        recursive: true
+        delete: false
       delegate_to: localhost
       run_once: false

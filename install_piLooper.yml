@@ -1,16 +1,18 @@
 ---
-- hosts: pi
+- hosts: video_pis
   become: true
+  serial: 1
   pre_tasks:
      - name: update
        tags: always
-       apt: update_cache=yes
+       apt:
+         update_cache: true
 
      - name: update cache & Install git
        apt:
          name: git
          state: present
-         update_cache: yes
+         update_cache: true
 
      - name: cloning_git_repo
        git: 
