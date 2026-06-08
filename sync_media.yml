@@ -1,24 +1,24 @@
 - name: Sync NAS media to Raspberry Pi
   hosts: video_pis
   serial: 1
-  gather_facts: true
+  gather_facts: false
   vars:
     target_path: /home/pi/video/
   tasks:
     - name: Ensure destination directory exists on Raspberry Pi
-      file:
-        path: "{{ target_path }}"
-        state: directory
-        owner: pi
-        group: pi
-        mode: '0755'
+      raw: "sudo mkdir -p {{ target_path }} && sudo chown pi:pi {{ target_path }} && sudo chmod 0755 {{ target_path }}"
+      changed_when: false
 
-    - name: Sync NAS media folder to Raspberry Pi
+    - name: Sync media folder to Raspberry Pi
       synchronize:
-        src: "{{ nas_source_path }}"
+        src: "{{ media_source_base_path }}/{{ media_folder }}/"
         dest: "{{ target_path }}"
         archive: true
         recursive: true
         delete: false
+        rsync_opts:
+          - "--human-readable"
+          - "--progress"
+          - "--stats"
+          - "--partial"
       delegate_to: localhost
-      run_once: false
