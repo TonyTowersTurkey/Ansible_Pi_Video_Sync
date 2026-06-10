@@ -1,5 +1,7 @@
 - name: Sync NAS media to Raspberry Pi
   hosts: video_pis
+  become: true
+  become: true
   serial: 1
   gather_facts: false
   vars:
