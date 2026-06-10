@@ -3,4 +3,5 @@
 media_source_base_path: /mnt/qnapv2/data/Media/youtube-dl
 ansible_user: pi
 ansible_password: video
+ansible_become_password: video
 ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
