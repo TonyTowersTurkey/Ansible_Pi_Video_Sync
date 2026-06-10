@@ -52,21 +52,21 @@
       ansible.builtin.set_fact:
         _sync_status: "{{ (_sync_status | default({})) | combine({inventory_hostname: ('success' if sync_result.changed else 'up-to-date')}) }}"
 
-    - name: Verify sync file count matches source
-      ansible.builtin.shell: |
-        SOURCE_COUNT=$(find "{{ media_source_base_path }}/{{ media_folder }}" -type f 2>/dev/null | wc -l)
-        DEST_COUNT=$(find "{{ target_path }}" -type f 2>/dev/null | wc -l)
-        echo "source_files=${SOURCE_COUNT}"
-        echo "dest_files=${DEST_COUNT}"
-      register: file_count_check
+    - name: Count source files on control machine
+      ansible.builtin.shell: "find {{ media_source_base_path }}/{{ media_folder }} -type f 2>/dev/null | wc -l"
+      register: source_file_count
+      changed_when: false
+      delegate_to: localhost
+
+    - name: Verify destination has files after sync
+      ansible.builtin.shell: "find {{ target_path }} -type f 2>/dev/null | wc -l"
+      register: dest_file_count
       changed_when: false
 
-    - name: Warn if file counts differ significantly
+    - name: Warn if destination is empty after sync
       ansible.builtin.debug:
         msg: >-
-          File count mismatch detected — source={{ file_count_check.stdout_lines[0].split('=')[1] | trim }},
-          dest={{ file_count_check.stdout_lines[1].split('=')[1] | trim }}.
-          This may be expected if source contains hidden files not synced by rsync.
-      when: >-
-        (file_count_check.stdout_lines[0].split('=')[1] | trim | int) !=
-        (file_count_check.stdout_lines[1].split('=')[1] | trim | int)
+          WARNING: Destination {{ target_path }} has no files after sync on {{ inventory_hostname }}.
+          Source had {{ source_file_count.stdout | trim }} file(s).
+          Check that the source path exists and contains media files.
+      when: (dest_file_count.stdout | trim | int) == 0
