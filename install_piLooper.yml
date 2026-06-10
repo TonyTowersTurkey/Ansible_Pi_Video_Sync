@@ -14,21 +14,33 @@
          state: present
          update_cache: true
 
+     - name: Check if videoLooper is already installed
+       ansible.builtin.stat:
+         path: /home/pi/videoLooper/.git
+       register: videoLooper_git_check
+
      - name: cloning_git_repo
        git: 
          repo: https://github.com/adafruit/pi_video_looper.git
          dest: /home/pi/videoLooper
          version: master
+       when: not videoLooper_git_check.stat.exists
 
      - name: Run install script 
        command: sudo sh /home/pi/videoLooper/install.sh
+       args:
+         creates: /usr/local/bin/videolooper
+       when: not videoLooper_git_check.stat.exists
 
      - name: Run enable script
        command: sudo sh /home/pi/videoLooper/enable.sh
+       args:
+         creates: /etc/systemd/system/videolooper.service
+       when: not videoLooper_git_check.stat.exists
 
      - name: copy 'video_looper.ini' to pi
        ansible.builtin.copy:
-         src: //Users/tonytowers/dev/raspiVideoPiLooperAnsible/video_looper.ini
+         src: "{{ playbook_dir }}/video_looper.ini"
          dest: /boot/video_looper.ini
 
 

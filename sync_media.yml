@@ -5,20 +5,68 @@
   vars:
     target_path: /home/pi/video/
   tasks:
+    - name: Validate source path exists on control machine
+      ansible.builtin.stat:
+        path: "{{ media_source_base_path }}/{{ media_folder }}"
+      register: source_check
+      delegate_to: localhost
+      run_once: true
+
+    - name: Fail if source path is missing
+      ansible.builtin.fail:
+        msg: >-
+          Source path does not exist on control machine:
+          {{ media_source_base_path }}/{{ media_folder }}
+      when: not source_check.stat.exists
+      delegate_to: localhost
+      run_once: true
+
     - name: Ensure destination directory exists on Raspberry Pi
-      raw: "sudo mkdir -p {{ target_path }} && sudo chown pi:pi {{ target_path }} && sudo chmod 0755 {{ target_path }}"
+      ansible.builtin.file:
+        path: "{{ target_path }}"
+        state: directory
+        owner: pi
+        group: pi
+        mode: '0755'
       changed_when: false
 
     - name: Sync media folder to Raspberry Pi
-      synchronize:
+      ansible.posix.synchronize:
         src: "{{ media_source_base_path }}/{{ media_folder }}/"
         dest: "{{ target_path }}"
         archive: true
         recursive: true
-        delete: false
+        compress: false
+        delete: true
         rsync_opts:
           - "--human-readable"
           - "--progress"
           - "--stats"
           - "--partial"
       delegate_to: localhost
+      register: sync_result
+      failed_when: false
+      changed_when: sync_result.changed
+
+    - name: Record sync result per host
+      ansible.builtin.set_fact:
+        _sync_status: "{{ (_sync_status | default({})) | combine({inventory_hostname: ('success' if sync_result.changed else 'up-to-date')}) }}"
+
+    - name: Verify sync file count matches source
+      ansible.builtin.shell: |
+        SOURCE_COUNT=$(find "{{ media_source_base_path }}/{{ media_folder }}" -type f 2>/dev/null | wc -l)
+        DEST_COUNT=$(find "{{ target_path }}" -type f 2>/dev/null | wc -l)
+        echo "source_files=${SOURCE_COUNT}"
+        echo "dest_files=${DEST_COUNT}"
+      register: file_count_check
+      changed_when: false
+
+    - name: Warn if file counts differ significantly
+      ansible.builtin.debug:
+        msg: >-
+          File count mismatch detected — source={{ file_count_check.stdout_lines[0].split('=')[1] | trim }},
+          dest={{ file_count_check.stdout_lines[1].split('=')[1] | trim }}.
+          This may be expected if source contains hidden files not synced by rsync.
+      when: >-
+        (file_count_check.stdout_lines[0].split('=')[1] | trim | int) !=
+        (file_count_check.stdout_lines[1].split('=')[1] | trim | int)

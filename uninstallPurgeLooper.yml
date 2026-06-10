@@ -1,22 +1,43 @@
 ---
-- hosts: pi
+- hosts: video_pis
   become: true
   serial: 1
+  vars_prompt:
+    - name: confirm_uninstall
+      prompt: |
+        WARNING: This will disable the video looper, remove its directory, and delete all synced media.
+        Type 'UNINSTALL' to proceed:
+      private: false
+
   pre_tasks:
+     - name: Abort if confirmation does not match
+       ansible.builtin.fail:
+         msg: "Uninstall aborted — confirmation did not match."
+       when: confirm_uninstall != 'UNINSTALL'
+
      - name: update
        tags: always
        apt:
          update_cache: true
 
-     - name: Run a script with arguments (free form)
-       command: sudo sh /home/pi/videoLooper/disable.sh
+     - name: Backup video directory before deletion
+       ansible.builtin.command: tar czf /tmp/videolooper-backup-{{ ansible_date_time.iso8601_basic_short }}.tar.gz -C /home/pi video
+       args:
+         creates: /tmp/videolooper-backup-{{ ansible_date_time.iso8601_basic_short }}.tar.gz
+       ignore_errors: true
 
-     - name: delete looper directory
+     - name: Disable video looper service
+       command: sudo sh /home/pi/videoLooper/disable.sh
+       args:
+         removes: /home/pi/videoLooper/enable.sh
+       ignore_errors: true
+
+     - name: Delete looper directory
        ansible.builtin.file:
          path: /home/pi/videoLooper
          state: absent
 
-     - name: delete video directory
+     - name: Delete video directory
        ansible.builtin.file:
          path: /home/pi/video
          state: absent

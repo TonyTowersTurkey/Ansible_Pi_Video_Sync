@@ -1,0 +1,21 @@
+---
+# ansible-lint configuration for Ansible Pi Video Sync
+# Run: ansible-lint
+# Install: pip install ansible-lint
+
+profiles:
+  - general
+
+skip_list:
+  # Using serial: 1 is intentional — prevents NAS/network overload
+  - yaml[line-length]
+  # synchronize module requires delegate_to: localhost
+  - command-instead-of-module
+  # Raw module replaced in sync_media.yml; keeping for legacy compatibility if needed
+  - no-changed-when
+
+warn_list:
+  # Variables without quotes are intentional for Jinja2 interpolation
+  - var-naming
+  # Role usage is planned but not yet implemented
+  - role-name
